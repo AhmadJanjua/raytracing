@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Add source files
 set(SOURCES
     src/main.cpp
+    src/Renderer.cpp
+    src/ShaderProgram.cpp
+    src/TextFile.cpp
     src/glad.c
 )
 

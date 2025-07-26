@@ -1,4 +1,4 @@
-#include "Renderer.cpp"
+#include "Renderer.h"
 
 int main() {
     Renderer renderer("Hello");
