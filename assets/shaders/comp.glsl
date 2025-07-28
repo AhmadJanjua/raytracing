@@ -4,54 +4,138 @@ layout (local_size_x = 10, local_size_y = 10, local_size_z = 1) in;
 
 layout(rgba32f, binding = 0) uniform image2D imgOutput;
 
+
+// ---- Helper Functions
+float PHI = 1.61803398874989484820459;  
+
+float rand(vec2 xy, float seed){
+    return fract(sin(distance(xy*PHI, xy)*seed)*xy.x);
+}
+
+// ---- Ray Structures
 struct Ray {
     vec3 origin;
     vec3 direction;
+};
+
+struct RayRecord {
+    float time;
+    vec3 point;
+    vec3 normal;
 };
 
 vec3 lookAt(Ray ray, float t) {
     return ray.origin + t * ray.direction;
 }
 
-float hitSphere(Ray ray, vec3 center, float radius) {
-    vec3 oc = ray.origin - center;
+// ---- Shape Objects + constructors
+int SPHERE_TYPE = 0;
 
-    float a = dot(ray.direction, ray.direction);
-    float b = 2.0 * dot(oc, ray.direction);
-    float c = dot(oc, oc) - radius * radius;
-    float discriminant = b*b - 4 * a * c;
+struct Object {
+    int type;
+    vec3 center;
+    float radius;
+};
 
-    if (discriminant < 0) {
-        return -1;
-    } else {
-        return (-b - sqrt(discriminant)) / (2.0 * a);
-    }
+Object Sphere(vec3 center, float radius) {
+    Object o;
+    o.type = SPHERE_TYPE;
+    o.center = center;
+    o.radius = radius;
+    return o;
 }
 
+// ---- World State
+Object world[] = {
+    Sphere(vec3(0, 0, -1), 0.5),
+    Sphere(vec3(0, -100.5, -1), 100)
+};
+
+// ---- Object Intersection
+bool intersectSphere(Object o, Ray r, inout RayRecord rec, float tMin, float tMax) {
+    vec3 oc = r.origin - o.center;
+
+    float a = dot(r.direction, r.direction);
+    float b = dot(oc, r.direction);
+    float c = dot(oc, oc) - o.radius*o.radius;
+    float discriminant = b*b - a*c;
+
+    if (discriminant > 0) {
+        float t = (-b - sqrt(discriminant)) / a;
+
+        if (t < tMin || t > tMax) {
+            t = (-b + sqrt(discriminant)) / a;
+        }
+
+        if (t > tMin && t < tMax) {
+            rec.time = t;
+            rec.point = lookAt(r, t);
+            rec.normal = (rec.point - o.center) / o.radius;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool intersect(Object o, Ray r, inout RayRecord rec, float tMin, float tMax) {
+    switch (o.type) {
+        case 0: return intersectSphere(o, r, rec, tMin, tMax);
+    }
+    return false;
+}
+
+bool findIntersect(Ray r, inout RayRecord rec, float tMin, float tMax) {
+    bool hitFound = false;
+    float closest = tMax;
+
+    for (int i=0; i < world.length(); i++) {
+        if (intersect(world[i], r, rec, tMin, closest)) {
+            hitFound = true;
+            closest = rec.time; 
+        }
+    }
+    return hitFound;
+}
+
+// ---- Get the color
 vec3 color(Ray ray) {
-    float t = hitSphere(ray, vec3(0, 0, -1), 0.5);
-    if (t > 0) {
-        vec3 norm = normalize(lookAt(ray, t) - vec3(0, 0, -1));
-        return 0.5 * (norm  + 1.0);
+    RayRecord rec;
+
+    if (findIntersect(ray, rec, 0, 3.402823466e+38)) {
+        return 0.5 * (rec.normal + 1);
     }
 
     vec3 dir_norm = normalize(ray.direction);
-    t = 0.5 * (dir_norm.y + 1.0);
+    float t = 0.5 * (dir_norm.y + 1.0);
     return (1.0 - t) * vec3(1, 1, 1) + t * vec3(0.5, 0.7, 1);
 }
 
-
+// Cast ray and anti-alias the color results
 void main() {
-    vec2 pixelPos = vec2(gl_GlobalInvocationID.xy);
-    vec2 pixelSize = vec2(imageSize(imgOutput));
-    vec2 uv = pixelPos / pixelSize;
+    vec2 co = gl_GlobalInvocationID.xy;
+    ivec2 curPixelPos = ivec2(co);
+    ivec2 maxPixelPos = imageSize(imgOutput);
+    float aspect = float(maxPixelPos.x) / float(maxPixelPos.y);
+    vec3 origin = vec3(0);
 
-    vec3 lowerLeftCorner = vec3(-2.0, -1.0, -1.0);
-    vec2 ratios = vec2(4.0, 4.0 * (pixelSize.y / pixelSize.x));
-    vec3 origin = vec3(0, 0, 0);
+    // map pixel [0,1] -> [-1, 1] + anti-aliasing
+    int samples = 50;
+    vec3 result = vec3(0);
+    for (int i=0; i < samples; i++) {
+        vec2 random = vec2(
+            rand(co, 1.23 + float(i)),
+            rand(co, 0.71 + float(i))
+        );
+        vec2 uv = ((vec2(curPixelPos + random)) / vec2(maxPixelPos)) * 2.0 - 1.0;
+        vec2 screenPos = vec2(uv.x * aspect, uv.y);
 
-    Ray r = {origin, lowerLeftCorner + vec3(uv * ratios, 0.0)};
-    vec3 value = color(r);
+        // Ray
+        vec3 direction = vec3(screenPos, -1.0);
+        Ray ray = Ray(origin, direction);
+        result += normalize(color(ray));
+    }
+    result /= float(samples);
 
-    imageStore(imgOutput, ivec2(pixelPos), vec4(value, 1.0));
+    imageStore(imgOutput, curPixelPos, vec4(result, 1.0));
 }
