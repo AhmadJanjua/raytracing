@@ -7,10 +7,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Add source files
 set(SOURCES
     src/main.cpp
-    src/Renderer.cpp
-    src/ShaderProgram.cpp
-    src/TextFile.cpp
     src/glad.c
+    src/TextFile.cpp
+    src/ShaderHelper.cpp
+    src/ShaderProgram.cpp
+    src/ComputeShader.cpp
+    src/Renderer.cpp
 )
 
 # Include GLAD and GLFW headers

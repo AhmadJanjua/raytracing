@@ -1,7 +1,27 @@
 #include "Renderer.h"
 
-void Renderer::windowSizeCallback(GLFWwindow* window, int width, int height) {
-    glViewport(0, 0, width, height);
+Renderer::Renderer(const char* name, uint32_t width, uint32_t height) {
+    if (!initOpenGL(name, width, height)) {
+        exit(-1);
+    }
+
+    shaderProgram = new ShaderProgram(
+        "../assets/shaders/vert.glsl",
+        "../assets/shaders/frag.glsl"
+    );
+
+    computeProgram = new ComputeShader(
+        "../assets/shaders/comp.glsl",
+        width,
+        height
+    );
+}
+
+Renderer::~Renderer() {
+    delete shaderProgram;
+    delete computeProgram;
+    shaderProgram = nullptr;
+    glfwTerminate();
 }
 
 bool Renderer::initOpenGL(const char* name, uint32_t width, uint32_t height) {
@@ -29,20 +49,13 @@ bool Renderer::initOpenGL(const char* name, uint32_t width, uint32_t height) {
     return true;
 }
 
+void Renderer::windowSizeCallback(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
+}
+
 void Renderer::processInput() {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-}
-
-Renderer::Renderer(const char* name, uint32_t width, uint32_t height) {
-    if (!initOpenGL(name, width, height)) {
-        exit(-1);
-    }
-
-    shaderProgram = new ShaderProgram(
-        "../assets/shaders/manual.vert",
-        "../assets/shaders/manual.frag"
-    );
 }
 
 bool Renderer::active() {
@@ -50,21 +63,14 @@ bool Renderer::active() {
 }
 
 void Renderer::process() {
+    time.print();
+
     processInput();
 
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    shaderProgram->bind();
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    shaderProgram->unbind();
+    computeProgram->run(time.prev);
+    computeProgram->display(shaderProgram->getID(), shaderProgram->getVAO());
+    computeProgram->swapBuffers();
 
     glfwSwapBuffers(window);
     glfwPollEvents();
-}
-
-Renderer::~Renderer() {
-    delete shaderProgram;
-    shaderProgram = nullptr;
-    glfwTerminate();
 }
