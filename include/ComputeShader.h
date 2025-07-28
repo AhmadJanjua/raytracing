@@ -18,4 +18,7 @@ public:
     void run(float t);
     void display(uint32_t progShaderID, uint32_t VAO);
     void swapBuffers();
+
+    void updateSize(uint32_t width, uint32_t height);
+
 };

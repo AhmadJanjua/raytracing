@@ -39,6 +39,7 @@ bool Renderer::initOpenGL(const char* name, uint32_t width, uint32_t height) {
     }
 
     glfwMakeContextCurrent(window);
+    glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, windowSizeCallback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -50,6 +51,8 @@ bool Renderer::initOpenGL(const char* name, uint32_t width, uint32_t height) {
 }
 
 void Renderer::windowSizeCallback(GLFWwindow* window, int width, int height) {
+    Renderer* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
+    renderer->computeProgram->updateSize(width, height);
     glViewport(0, 0, width, height);
 }
 

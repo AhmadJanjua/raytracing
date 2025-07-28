@@ -1,7 +1,7 @@
 #include "ComputeShader.h"
 
 ComputeShader::ComputeShader(const char* filename, uint32_t width, uint32_t height)
-: width(width), height(height) {
+    : width(width), height(height) {
     TextFile compShaderSrc(filename);
     uint32_t compShaderID;
 
@@ -41,9 +41,8 @@ void ComputeShader::run(float t) {
 
     glBindImageTexture(0, textID[frameIdx], 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glBindImageTexture(1, textID[!frameIdx], 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-    glUniform1f(glGetUniformLocation(ID, "t"), t);
 
-    glDispatchCompute(width / 10, height / 10, 1);
+    glDispatchCompute((width + 9) / 10, (height + 9) / 10, 1);
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 }
 
@@ -60,4 +59,19 @@ void ComputeShader::display(uint32_t progShaderID, uint32_t VAO) {
 
 void ComputeShader::swapBuffers() {
     frameIdx = !frameIdx;
+}
+
+void ComputeShader::updateSize(uint32_t width, uint32_t height) {
+    this->width = width;
+    this->height = height;
+
+    glDeleteTextures(2, textID);
+    glGenTextures(2, textID);
+
+    for (int i = 0; i < 2; ++i) {
+        glBindTexture(GL_TEXTURE_2D, textID[i]);
+        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, width, height);
+    }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
