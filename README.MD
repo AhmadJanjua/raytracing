@@ -9,3 +9,6 @@
 
 # Diffused Sphere
 ![alt text](docs/images/diffused.png)
+
+# Metalic Spheres
+![alt text](docs/images/metalic.png)
