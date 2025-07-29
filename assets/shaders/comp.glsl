@@ -4,12 +4,41 @@ layout (local_size_x = 10, local_size_y = 10, local_size_z = 1) in;
 
 layout(rgba32f, binding = 0) uniform image2D imgOutput;
 
+uniform uint rndUniform;
 
 // ---- Helper Functions
-float PHI = 1.61803398874989484820459;  
+uint seed = rndUniform;
+vec2 id = gl_GlobalInvocationID.xy;
 
-float rand(vec2 xy, float seed){
-    return fract(sin(distance(xy*PHI, xy)*seed)*xy.x);
+float randFloat(){
+    seed++;
+    
+    uint m = uint(id.x) * 1664525u + uint(id.y) * 1013904223u + seed;
+    m ^= (m >> 16);
+    m *= 0x85ebca6bu;
+    m ^= (m >> 13);
+    m *= 0xc2b2ae35u;
+    m ^= (m >> 16);
+    return fract(float(m) / float(0xffffffffu));
+}
+
+vec2 randVec2() {
+    return vec2(randFloat(), randFloat());
+}
+
+vec3 randVec3() {
+    return vec3(randFloat(), randFloat(), randFloat());
+}
+
+vec3 randUnitVec() {
+    while (true) {
+        vec3 point = randVec3() * 2.0 - 1.0;
+        float distSquare = dot(point, point);
+
+        if (0 < distSquare) {
+            return point / sqrt(distSquare);
+        }
+    }
 }
 
 // ---- Ray Structures
@@ -52,6 +81,15 @@ Object world[] = {
 };
 
 // ---- Object Intersection
+vec3 defuseBounce(vec3 normal) {
+    vec3 unitVec = randUnitVec();
+
+    if (dot(unitVec, normal) > 0.0)
+        return unitVec;
+    else
+        return -unitVec;
+}
+
 bool intersectSphere(Object o, Ray r, inout RayRecord rec, float tMin, float tMax) {
     vec3 oc = r.origin - o.center;
 
@@ -95,47 +133,55 @@ bool findIntersect(Ray r, inout RayRecord rec, float tMin, float tMax) {
             closest = rec.time; 
         }
     }
+    
     return hitFound;
 }
 
 // ---- Get the color
 vec3 color(Ray ray) {
-    RayRecord rec;
+    float attenuation = 1.0;
+    const int maxBounces = 10;
 
-    if (findIntersect(ray, rec, 0, 3.402823466e+38)) {
-        return 0.5 * (rec.normal + 1);
+    for (int i = 0; i < maxBounces; ++i) {
+        RayRecord rec;
+
+        if (findIntersect(ray, rec, 0.001, 3.402823466e+38)) {
+            vec3 direction = rec.normal + defuseBounce(rec.normal);
+            ray = Ray(rec.point, direction);
+            attenuation *= 0.5;
+        } else {
+            vec3 dir_norm = normalize(ray.direction);
+            float t = 0.5 * (dir_norm.y + 1.0);
+            return attenuation * ((1.0 - t) + t * vec3(0.5, 0.7, 1));
+        }
     }
 
-    vec3 dir_norm = normalize(ray.direction);
-    float t = 0.5 * (dir_norm.y + 1.0);
-    return (1.0 - t) * vec3(1, 1, 1) + t * vec3(0.5, 0.7, 1);
+    return vec3(0, 0, 0);
 }
+
 
 // Cast ray and anti-alias the color results
 void main() {
-    vec2 co = gl_GlobalInvocationID.xy;
-    ivec2 curPixelPos = ivec2(co);
+    ivec2 curPixelPos = ivec2(id);
     ivec2 maxPixelPos = imageSize(imgOutput);
     float aspect = float(maxPixelPos.x) / float(maxPixelPos.y);
     vec3 origin = vec3(0);
 
-    // map pixel [0,1] -> [-1, 1] + anti-aliasing
     int samples = 50;
     vec3 result = vec3(0);
     for (int i=0; i < samples; i++) {
-        vec2 random = vec2(
-            rand(co, 1.23 + float(i)),
-            rand(co, 0.71 + float(i))
-        );
+        vec2 random = randVec2();
         vec2 uv = ((vec2(curPixelPos + random)) / vec2(maxPixelPos)) * 2.0 - 1.0;
         vec2 screenPos = vec2(uv.x * aspect, uv.y);
 
         // Ray
         vec3 direction = vec3(screenPos, -1.0);
         Ray ray = Ray(origin, direction);
-        result += normalize(color(ray));
+        result += color(ray);
     }
+
     result /= float(samples);
+    result = sqrt(result); // gamma correction
 
     imageStore(imgOutput, curPixelPos, vec4(result, 1.0));
 }

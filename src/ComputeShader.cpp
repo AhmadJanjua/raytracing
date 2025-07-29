@@ -41,6 +41,7 @@ void ComputeShader::run(float t) {
 
     glBindImageTexture(0, textID[frameIdx], 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glBindImageTexture(1, textID[!frameIdx], 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+    glUniform1i(glGetUniformLocation(ID, "rndUniform"), rand());
 
     glDispatchCompute((width + 9) / 10, (height + 9) / 10, 1);
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
