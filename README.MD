@@ -12,3 +12,6 @@
 
 # Metalic Spheres
 ![alt text](docs/images/metalic.png)
+
+# Dielectric Sphere
+![alt text](docs/images/dielectric.png)

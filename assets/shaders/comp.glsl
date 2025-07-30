@@ -49,11 +49,13 @@ struct Ray {
 
 const int MAT_LAMBERTIAN = 0;
 const int MAT_METAL = 1;
+const int MAT_DIELECTRIC = 2;
 
 struct Material {
     int type;
     vec3 albedo;
     float fuzz;
+    float refractiveIdx;
 };
 
 Material Lambertian(vec3 a) {
@@ -68,6 +70,13 @@ Material Metal(vec3 a, float f) {
     mat.type = MAT_METAL;
     mat.albedo = a;
     mat.fuzz = f;
+    return mat;
+}
+
+Material Dielectric(float r) {
+    Material mat;
+    mat.type = MAT_DIELECTRIC;
+    mat.refractiveIdx = r;
     return mat;
 }
 
@@ -103,10 +112,11 @@ Object Sphere(vec3 center, float radius, Material mat) {
 
 // ---- World State
 Object world[] = {
-    Sphere(vec3( 0,      0, -1), 0.5, Lambertian(vec3(0.8, 0.3, 0.3))),
-    Sphere(vec3( 0, -100.5, -1), 100, Lambertian(vec3(0.8, 0.8, 0.0))),
-    Sphere(vec3( 1,      0, -1), 0.5, Metal(vec3(0.8, 0.6, 0.2), 0.9)),
-    Sphere(vec3(-1,      0, -1), 0.5, Metal(vec3(0.8, 0.8, 0.8), 0.1)),
+    Sphere(vec3( 0,      0, -1.2), 0.5, Lambertian(vec3(0.1, 0.2, 0.5))),
+    Sphere(vec3( 0, -100.5, -1.0), 100, Lambertian(vec3(0.8, 0.8, 0.0))),
+    Sphere(vec3( 1,      0, -1.0), 0.5, Metal(vec3(0.8, 0.6, 0.2), 0.9)),
+    Sphere(vec3(-1,      0, -1.0), 0.5, Dielectric(1.5)),
+    Sphere(vec3(-1,      0, -1.0), 0.4, Dielectric(1.0 / 1.5)),
 };
 
 // Scattering properties
@@ -114,18 +124,54 @@ vec3 reflect(vec3 v, vec3 norm) {
     return v - 2 * dot(v, norm) * norm;
 }
 
+vec3 refract(vec3 uv, vec3 n, float ratio) {
+    float theta = min(dot(-uv, n), 1.0);
+
+    vec3 outPerp = ratio * (uv + theta*n);
+    vec3 outPara = -sqrt(abs(1 - dot(outPerp, outPerp))) * n;
+    return outPerp + outPara;
+}
+
+float schlick(float cosine, float refIdx) {
+    float r0 = (1 - refIdx) / (1 + refIdx);
+    r0 *= r0;
+    return r0 + (1-r0)*pow((1 - cosine),5);
+}
+
 bool scatter(Ray inRay, inout Ray scatterRay, inout RayRecord rec, inout vec3 attenuation) {
     switch (rec.material.type) {
-        case MAT_LAMBERTIAN:
+        case MAT_LAMBERTIAN: {
             vec3 direction = rec.normal + randUnitVec();
             scatterRay = Ray(rec.point, direction);
             attenuation *= rec.material.albedo;
             return true;
-        case MAT_METAL:
+        }
+        case MAT_METAL: {
             vec3 reflected = reflect(normalize(inRay.direction), rec.normal);
             scatterRay = Ray(rec.point, reflected + rec.material.fuzz * randUnitVec());
             attenuation *= rec.material.albedo;
             return (dot(scatterRay.direction, rec.normal) > 0);
+        }
+        case MAT_DIELECTRIC: {
+            bool frontFace = dot(inRay.direction, rec.normal) < 0;
+            rec.normal = frontFace ? rec.normal : -rec.normal;
+            vec3 unitDir = normalize(inRay.direction);
+
+            float cosTheta = min(dot(-unitDir, rec.normal), 1.0);
+            float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
+
+            float ri = frontFace ? (1.0/rec.material.refractiveIdx) : rec.material.refractiveIdx;
+
+            if ((ri * sinTheta > 1.0) || schlick(cosTheta, ri) > randFloat()) {
+                vec3 reflected = reflect(unitDir, rec.normal);
+                scatterRay = Ray(rec.point, reflected + rec.material.fuzz * randUnitVec());
+            } else {
+                vec3 refracted = refract(unitDir, rec.normal, ri);
+                scatterRay = Ray(rec.point, refracted);
+            }
+
+            return true;
+        }
     }
     return false;
 }
