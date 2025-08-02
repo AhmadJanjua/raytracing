@@ -1,7 +1,7 @@
 #include "Renderer.h"
 
 int main() {
-    Renderer renderer("Hello", 800, 800);
+    Renderer renderer("RayTracer", 1920, 1080);
 
     while (renderer.active()) {
         renderer.process();

@@ -9,6 +9,7 @@ set(SOURCES
     src/main.cpp
     src/glad.c
     src/TextFile.cpp
+    src/Camera.cpp
     src/ShaderHelper.cpp
     src/ShaderProgram.cpp
     src/ComputeShader.cpp

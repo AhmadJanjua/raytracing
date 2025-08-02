@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "ShaderProgram.h"
 #include "ComputeShader.h"
+#include "Camera.h"
 
 struct Time {
     float dt;
@@ -29,6 +30,8 @@ private:
     GLFWwindow* window = nullptr;
     ShaderProgram* shaderProgram = nullptr;
     ComputeShader* computeProgram = nullptr;
+    Camera camera;
+    double mousePosX, mousePosY;
     Time time;
 
     static void windowSizeCallback(GLFWwindow* window, int width, int height);

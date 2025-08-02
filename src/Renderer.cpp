@@ -15,6 +15,8 @@ Renderer::Renderer(const char* name, uint32_t width, uint32_t height) {
         width,
         height
     );
+
+    glfwGetCursorPos(window, &mousePosX, &mousePosY);
 }
 
 Renderer::~Renderer() {
@@ -41,6 +43,8 @@ bool Renderer::initOpenGL(const char* name, uint32_t width, uint32_t height) {
     glfwMakeContextCurrent(window);
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, windowSizeCallback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cout << "Failed to initialize GLAD" << std::endl;
@@ -57,8 +61,31 @@ void Renderer::windowSizeCallback(GLFWwindow* window, int width, int height) {
 }
 
 void Renderer::processInput() {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+        camera.pos += camera.front * time.dt * 3.f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+        camera.pos -= camera.front * time.dt * 3.f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+        camera.pos += camera.right * time.dt * 3.f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+        camera.pos -= camera.right * time.dt * 3.f;
+    }
+
+    double tmpX, tmpY;
+    glfwGetCursorPos(window, &tmpX, &tmpY);
+
+    camera.phi -= (mousePosX - tmpX) * time.dt * 8.f;
+    camera.theta += (mousePosY - tmpY) * time.dt * 8.f;
+
+    mousePosX = tmpX;
+    mousePosY = tmpY;
 }
 
 bool Renderer::active() {
@@ -67,10 +94,11 @@ bool Renderer::active() {
 
 void Renderer::process() {
     time.print();
+    camera.update();
 
     processInput();
 
-    computeProgram->run(time.prev);
+    computeProgram->run(time.prev, camera);
     computeProgram->display(shaderProgram->getID(), shaderProgram->getVAO());
     computeProgram->swapBuffers();
 

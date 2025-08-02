@@ -1,10 +1,14 @@
 #version 460
 
-layout (local_size_x = 10, local_size_y = 10, local_size_z = 1) in;
+layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 layout(rgba32f, binding = 0) uniform image2D imgOutput;
 
 uniform uint rndUniform;
+uniform vec3 up;
+uniform vec3 right;
+uniform vec3 front;
+uniform vec3 origin;
 
 // ---- Helper Functions
 uint seed = rndUniform;
@@ -112,12 +116,43 @@ Object Sphere(vec3 center, float radius, Material mat) {
 
 // ---- World State
 Object world[] = {
-    Sphere(vec3( 0,      0, -1.2), 0.5, Lambertian(vec3(0.1, 0.2, 0.5))),
-    Sphere(vec3( 0, -100.5, -1.0), 100, Lambertian(vec3(0.8, 0.8, 0.0))),
-    Sphere(vec3( 1,      0, -1.0), 0.5, Metal(vec3(0.8, 0.6, 0.2), 0.9)),
-    Sphere(vec3(-1,      0, -1.0), 0.5, Dielectric(1.5)),
-    Sphere(vec3(-1,      0, -1.0), 0.4, Dielectric(1.0 / 1.5)),
+    Sphere(vec3( 0, -100.5, -1.0), 100, Metal(vec3(0.9, 0.8, 0.9), 0.01)),
+    Sphere(vec3( 0,      0,  -1.2), 0.5, Lambertian(vec3(0.1, 0.2, 0.5))),
+    Sphere(vec3( 1,      0,  -1.0), 0.5, Metal(vec3(0.8, 0.6, 0.2), 0.9)),
+    Sphere(vec3(-1,      0,  -1.0), 0.5, Dielectric(1.5)),
+    Sphere(vec3(-1,      0,  -1.0), 0.4, Dielectric(1.0 / 1.5)),
+
+    Sphere(vec3( 2,      0.3, -1.5), 0.3, Lambertian(vec3(0.7, 0.1, 0.1))),
+    Sphere(vec3(-2,      0.2, -1.5), 0.2, Metal(vec3(0.9, 0.9, 0.9), 0.1)),
+    Sphere(vec3( 0.5,    0.5, -2.0), 0.5, Lambertian(vec3(0.2, 0.8, 0.3))),
+    Sphere(vec3(-0.5,    0.5, -2.0), 0.5, Metal(vec3(0.6, 0.7, 0.9), 0.3)),
+    Sphere(vec3( 1.2,    0.4, -2.5), 0.4, Dielectric(1.3)),
+
+    Sphere(vec3( 2.5,    0.6, -3.0), 0.6, Lambertian(vec3(0.9, 0.4, 0.2))),
+    Sphere(vec3(-2.5,    0.3, -3.0), 0.3, Metal(vec3(0.7, 0.7, 0.7), 0.0)),
+    Sphere(vec3( 0,      0.3, -3.5), 0.3, Lambertian(vec3(0.3, 0.5, 0.9))),
+    Sphere(vec3( 1.5,    0.5, -3.5), 0.5, Dielectric(1.5)),
+    Sphere(vec3(-1.5,    0.4, -3.5), 0.4, Metal(vec3(0.9, 0.8, 0.7), 0.05)),
+
+    Sphere(vec3( 0.8,    0.2, -4.0), 0.2, Lambertian(vec3(0.8, 0.1, 0.5))),
+    Sphere(vec3(-0.8,    0.2, -4.0), 0.2, Lambertian(vec3(0.1, 0.8, 0.6))),
+    Sphere(vec3( 2.0,    0.3, -4.2), 0.3, Metal(vec3(0.6, 0.5, 0.7), 0.2)),
+    Sphere(vec3(-2.0,    0.3, -4.2), 0.3, Metal(vec3(0.9, 0.9, 0.4), 0.3)),
+    Sphere(vec3( 0,      0.4, -4.5), 0.4, Dielectric(1.4)),
+
+    Sphere(vec3( 3.0,    0.5, -5.0), 0.5, Lambertian(vec3(0.4, 0.7, 0.2))),
+    Sphere(vec3(-3.0,    0.5, -5.0), 0.5, Metal(vec3(0.5, 0.5, 0.9), 0.05)),
+    Sphere(vec3( 1.0,    0.4, -5.5), 0.4, Lambertian(vec3(0.2, 0.6, 0.9))),
+    Sphere(vec3(-1.0,    0.4, -5.5), 0.4, Dielectric(1.6)),
+    Sphere(vec3( 2.2,    0.3, -5.8), 0.3, Metal(vec3(0.7, 0.6, 0.5), 0.15)),
+
+    Sphere(vec3(-2.2,    0.3, -5.8), 0.3, Lambertian(vec3(0.9, 0.2, 0.2))),
+    Sphere(vec3( 0.6,    0.2, -6.0), 0.2, Lambertian(vec3(0.3, 0.7, 0.4))),
+    Sphere(vec3(-0.6,    0.2, -6.0), 0.2, Metal(vec3(0.6, 0.8, 0.9), 0.1)),
+    Sphere(vec3( 1.5,    0.5, -6.2), 0.5, Dielectric(1.3)),
+    Sphere(vec3(-1.5,    0.5, -6.2), 0.5, Lambertian(vec3(0.5, 0.5, 0.5)))
 };
+
 
 // Scattering properties
 vec3 reflect(vec3 v, vec3 norm) {
@@ -225,7 +260,7 @@ bool findIntersect(Ray r, inout RayRecord rec, float tMin, float tMax) {
 // ---- Get the color
 vec3 color(Ray ray) {
     vec3 attenuation = vec3(1.0);
-    const int maxBounces = 10;
+    const int maxBounces = 30;
 
     for (int i = 0; i < maxBounces; ++i) {
         RayRecord rec;
@@ -244,28 +279,52 @@ vec3 color(Ray ray) {
     return vec3(0, 0, 0);
 }
 
-// Cast ray and anti-alias the color results
+struct Camera {
+    ivec2 pixel;
+    ivec2 res;
+    vec2 aspect;
+    vec3 up;
+    vec3 right;
+    vec3 front;
+};
+
+Camera initCamera() {
+    Camera c;
+
+    c.pixel = ivec2(id);
+    c.res = imageSize(imgOutput);
+
+    float aspect = float(c.res.x) / float(c.res.y);
+    
+    if (aspect > 0) {
+        c.aspect = vec2(1, 1.0/aspect);
+    } else {
+        c.aspect = vec2(aspect, 1.0);
+    }
+
+    return c;
+}
+
+vec3 getDirection(Camera c, vec2 random) {
+    vec2 uv = (vec2(c.pixel + random) / vec2(c.res)) * 2.0 - 1.0;
+    uv *= c.aspect;
+    
+    return uv.x * right + uv.y * up + front;
+}
+
 void main() {
-    ivec2 curPixelPos = ivec2(id);
-    ivec2 maxPixelPos = imageSize(imgOutput);
-    float aspect = float(maxPixelPos.x) / float(maxPixelPos.y);
-    vec3 origin = vec3(0);
+    Camera camera = initCamera();
 
-    int samples = 50;
     vec3 result = vec3(0);
-    for (int i=0; i < samples; i++) {
-        vec2 random = randVec2();
-        vec2 uv = ((vec2(curPixelPos + random)) / vec2(maxPixelPos)) * 2.0 - 1.0;
-        vec2 screenPos = vec2(uv.x * aspect, uv.y);
 
-        // Ray
-        vec3 direction = vec3(screenPos, -1.0);
-        Ray ray = Ray(origin, direction);
+    int samples = 25;
+    for (int i=0; i < samples; i++) {
+        Ray ray = Ray(origin, getDirection(camera, randVec2()));
         result += color(ray);
     }
 
     result /= float(samples);
-    result = sqrt(result); // gamma correction
+    result = sqrt(result);
 
-    imageStore(imgOutput, curPixelPos, vec4(result, 1.0));
+    imageStore(imgOutput, camera.pixel, vec4(result, 1.0));
 }

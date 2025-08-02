@@ -1,7 +1,7 @@
 #include "ComputeShader.h"
 
 ComputeShader::ComputeShader(const char* filename, uint32_t width, uint32_t height)
-    : width(width), height(height) {
+    : width(width), height(height), frameIdx(0) {
     TextFile compShaderSrc(filename);
     uint32_t compShaderID;
 
@@ -36,14 +36,18 @@ ComputeShader::~ComputeShader() {
     glDeleteProgram(ID);
 }
 
-void ComputeShader::run(float t) {
+void ComputeShader::run(float t, Camera& c) {
     glUseProgram(ID);
 
     glBindImageTexture(0, textID[frameIdx], 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glBindImageTexture(1, textID[!frameIdx], 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
     glUniform1i(glGetUniformLocation(ID, "rndUniform"), rand());
+    glUniform3fv(glGetUniformLocation(ID, "up"), 1, glm::value_ptr(c.up));
+    glUniform3fv(glGetUniformLocation(ID, "right"), 1, glm::value_ptr(c.right));
+    glUniform3fv(glGetUniformLocation(ID, "front"), 1, glm::value_ptr(c.front));
+    glUniform3fv(glGetUniformLocation(ID, "origin"), 1, glm::value_ptr(c.pos));
 
-    glDispatchCompute((width + 9) / 10, (height + 9) / 10, 1);
+    glDispatchCompute((width + 31) / 32, (height + 31) / 32, 1);
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 }
 
