@@ -8,10 +8,19 @@ A ray-tracing program built using OpenGL and compute shaders for real-time ray c
 ![alt text](docs/images/complete.png)
 
 ### Build and Installation
+```
 1. create and switch to "build" directory
 2. cmake ..
 3. make
 4. ./OpenGLApp
+```
+### Movement Controls
+```
+Mouse:
+    - look around
+WASD/Arrow:
+    - forward, back, left, right
+```
 
 # Example Materials
 ### Diffused Sphere
