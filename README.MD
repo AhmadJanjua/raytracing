@@ -2,7 +2,7 @@
 A ray-tracing program built using OpenGL and compute shaders for real-time ray casting system.
 
 ### Demo of the program
-[![Running Demo](https://img.youtube.com/vi/HL05jJHMh5Q/0.jpg)](https://youtu.be/)
+[![Running Demo](https://img.youtube.com/vi/HL05jJHMh5Q/0.jpg)](https://youtu.be/HL05jJHMh5Q)
 
 ### Rendering of completed scene
 ![alt text](docs/images/complete.png)
